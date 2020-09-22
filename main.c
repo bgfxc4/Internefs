@@ -38,23 +38,23 @@ size_t writefunc(void *ptr, size_t size, size_t nmemb, struct string *s) {
   return size * nmemb;
 }
 
-int decode_url(char *url, int urllength) {}
-
 struct string http_get(char *url, int urllength) {
-
-  printf("url: %s, length: %i", url, urllength);
 
   CURL *curl;
   CURLcode res;
 
   curl = curl_easy_init();
 
+  char *encodedURL = curl_easy_unescape(curl, url, urllength, NULL);
+
+  printf("url: %s, length: %i, encodedURL: %s ", url, urllength, encodedURL);
+
   struct string s;
   init_string(&s);
 
   if (curl) {
 
-    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
+    curl_easy_setopt(curl, CURLOPT_URL, encodedURL);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
@@ -62,12 +62,14 @@ struct string http_get(char *url, int urllength) {
 
     res = curl_easy_perform(curl);
     if (res != CURLE_OK) {
-      fprintf(stderr, "curl_easy_perform() failed: %s\n",
+      fprintf(stderr, "curl_easy_perform() failed KEK: %s\n",
               curl_easy_strerror(res));
+      s.len = -1;
     }
     curl_easy_cleanup(curl);
-    // printf("%s\n", s.ptr);
+    printf("s: %s slen: %i\n", s.ptr, s.len);
   }
+  curl_free(encodedURL);
   return s;
 }
 
@@ -121,7 +123,6 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset,
   printf("--> Trying to read %s, %u, %u\n", path, offset, size);
 
   fi->direct_io = 1;
-  // printf("hjfdgbdfhgbfhg+++++%i++++++dfslkjndfjdnf", fi->direct_io);
 
   struct string answ;
   printf("%i", str_startswith(path, "/get"));
@@ -133,9 +134,15 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset,
 
   } else
     return -1;
-
-  memcpy(buffer, answ.ptr + offset, size);
-  int ret = answ.len - offset;
+  int ret;
+  if (answ.len != -1) {
+    // printf("KE:LEN:%i\n", answ.len);
+    memcpy(buffer, answ.ptr + offset, size);
+    ret = answ.len - offset;
+  } else {
+    memcpy(buffer, "Internefs goes BLUB BLUB\n", 26);
+    ret = 26;
+  }
   // free(answ.ptr);
   printf("%i + %i + %i", size, answ.len, strlen(answ.ptr));
   printf("%s", answ.ptr);
