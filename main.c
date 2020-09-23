@@ -1,3 +1,5 @@
+#define min(x, y) (x < y ? x : y)
+
 #define FUSE_USE_VERSION 30
 
 #include <curl/curl.h>
@@ -13,6 +15,14 @@ struct string {
   char *ptr;
   size_t len;
   int error;
+};
+
+enum HTTP_KEK_ERRORS {
+  HTTP_ERROR_UNKNOWN = -1,
+  HTTP_ERROR_PROTOCOL_ERROR = -2,
+  HTTP_ERROR_INVALID_URL = -3,
+  HTTP_ERROR_CANT_CONNECT_TO_SERVER = -4,
+  HTTP_ERROR_NON_EXISTING_DOMAIN = -5
 };
 
 void init_string(struct string *s) {
@@ -108,8 +118,8 @@ static int do_getattr(const char *path, struct stat *st) {
     st->st_nlink = 2;
   } else {
     st->st_mode = S_IFREG;
-    st->st_nlink = 1; // file
-    st->st_size = 40960;
+    st->st_nlink = 1;     // file
+    st->st_size = 100000; // //1MB
   }
 
   return 0;
@@ -138,40 +148,40 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset,
 
   struct string answ;
   printf("%i", str_startswith(path, "/get"));
-  char *url = malloc(strlen(path));
+  char *url = malloc(strlen(path) + 1);
   if (str_startswith(path, "/get") == 0) {
     strcpy(url, path);
     url += 5;
     answ = http_get(url, strlen(url));
 
-  } else
+  } else {
     return -1;
+  }
 
   int ret;
   if (answ.error == 0) {
     // printf("KE:LEN:%i\n", answ.len);
-    memcpy(buffer, answ.ptr + offset, size);
-    ret = answ.len - offset;
+    memcpy(buffer, answ.ptr + offset, min(answ.len - offset, size));
+    ret = min(answ.len - offset, size);
     printf("%i + %i + %i", size, answ.len, strlen(answ.ptr));
-    printf("%s", answ.ptr);
+    // printf("%s", answ.ptr);
   } else {
     char *error;
-    if (answ.error == -1)
+    if (answ.error == HTTP_ERROR_UNKNOWN)
       error = "Internefs goes BLUB BLUB: something went wrong!\n";
-    else if (answ.error == -2)
+    else if (answ.error == HTTP_ERROR_PROTOCOL_ERROR)
       error = "Internefs goes BLUB BLUB: KEK use another Protocol!\n";
-    else if (answ.error == -3)
+    else if (answ.error == HTTP_ERROR_INVALID_URL)
       error = "Internefs goes BLUB BLUB: KEK format your URL right!\n";
-    else if (answ.error == -4)
+    else if (answ.error == HTTP_ERROR_CANT_CONNECT_TO_SERVER)
       error = "Internefs goes BLUB BLUB: couldnt connect to the server!\n";
-    else if (answ.error == -5)
+    else if (answ.error == HTTP_ERROR_NON_EXISTING_DOMAIN)
       error = "Internefs goes BLUB BLUB: KEK use an existing domain!\n";
 
     memcpy(buffer, error, strlen(error));
     ret = strlen(error);
   }
-  // free(answ.ptr);
-
+  free(answ.ptr);
   return ret;
 }
 
