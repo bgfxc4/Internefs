@@ -12,11 +12,13 @@
 struct string {
   char *ptr;
   size_t len;
+  int error;
 };
 
 void init_string(struct string *s) {
   s->len = 0;
   s->ptr = malloc(s->len + 1);
+  s->error = 0;
   if (s->ptr == NULL) {
     fprintf(stderr, "malloc() failed\n");
     exit(EXIT_FAILURE);
@@ -64,7 +66,17 @@ struct string http_get(char *url, int urllength) {
     if (res != CURLE_OK) {
       fprintf(stderr, "curl_easy_perform() failed KEK: %s\n",
               curl_easy_strerror(res));
-      s.len = -1;
+      if (res == CURLE_UNSUPPORTED_PROTOCOL)
+        s.error = -2;
+      else if (res == CURLE_URL_MALFORMAT)
+        s.error = -3;
+      else if (res == CURLE_COULDNT_CONNECT)
+        s.error = -4;
+      else if (res == CURLE_COULDNT_RESOLVE_HOST ||
+               res == CURLE_COULDNT_RESOLVE_PROXY)
+        s.error = -5;
+      else
+        s.error = -1;
     }
     curl_easy_cleanup(curl);
     printf("s: %s slen: %i\n", s.ptr, s.len);
@@ -134,18 +146,32 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset,
 
   } else
     return -1;
+
   int ret;
-  if (answ.len != -1) {
+  if (answ.error == 0) {
     // printf("KE:LEN:%i\n", answ.len);
     memcpy(buffer, answ.ptr + offset, size);
     ret = answ.len - offset;
+    printf("%i + %i + %i", size, answ.len, strlen(answ.ptr));
+    printf("%s", answ.ptr);
   } else {
-    memcpy(buffer, "Internefs goes BLUB BLUB\n", 26);
-    ret = 26;
+    char *error;
+    if (answ.error == -1)
+      error = "Internefs goes BLUB BLUB: something went wrong!\n";
+    else if (answ.error == -2)
+      error = "Internefs goes BLUB BLUB: KEK use another Protocol!\n";
+    else if (answ.error == -3)
+      error = "Internefs goes BLUB BLUB: KEK format your URL right!\n";
+    else if (answ.error == -4)
+      error = "Internefs goes BLUB BLUB: couldnt connect to the server!\n";
+    else if (answ.error == -5)
+      error = "Internefs goes BLUB BLUB: KEK use an existing domain!\n";
+
+    memcpy(buffer, error, strlen(error));
+    ret = strlen(error);
   }
   // free(answ.ptr);
-  printf("%i + %i + %i", size, answ.len, strlen(answ.ptr));
-  printf("%s", answ.ptr);
+
   return ret;
 }
 
