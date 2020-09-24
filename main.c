@@ -11,6 +11,8 @@
 #include <time.h>
 #include <unistd.h>
 
+CURL *curl;
+
 struct string {
   char *ptr;
   size_t len;
@@ -50,26 +52,22 @@ size_t writefunc(void *ptr, size_t size, size_t nmemb, struct string *s) {
 	return size * nmemb;
 }
 
-struct string http_get(char *url, int urllength) {
+int http_get(char *url, int urllength, struct string *s) {
 
-	CURL *curl;
 	CURLcode res;
-
-	curl = curl_easy_init();
 
 	char *encodedURL = curl_easy_unescape(curl, url, urllength, NULL);
 
 	printf("url: %s, length: %i, encodedURL: %s ", url, urllength, encodedURL);
 
-	struct string s;
-	init_string(&s);
+	init_string(s);
 
 	if (curl) {
 
 		curl_easy_setopt(curl, CURLOPT_URL, encodedURL);
 		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, s);
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
 		res = curl_easy_perform(curl);
@@ -77,22 +75,21 @@ struct string http_get(char *url, int urllength) {
 			fprintf(stderr, "curl_easy_perform() failed KEK: %s\n",
 				  curl_easy_strerror(res));
 			if (res == CURLE_UNSUPPORTED_PROTOCOL)
-				s.error = -2;
+				s->error = -2;
 			else if (res == CURLE_URL_MALFORMAT)
-				s.error = -3;
+				s->error = -3;
 			else if (res == CURLE_COULDNT_CONNECT)
-				s.error = -4;
+				s->error = -4;
 			else if (res == CURLE_COULDNT_RESOLVE_HOST ||
 				   res == CURLE_COULDNT_RESOLVE_PROXY)
-				s.error = -5;
+				s->error = -5;
 			else
-				s.error = -1;
+				s->error = -1;
 		}
-		curl_easy_cleanup(curl);
 		// printf("s: %s slen: %i\n", s.ptr, s.len);
 	}
 	curl_free(encodedURL);
-	return s;
+	return 0;
 }
 
 int str_startswith(const char *str, char *tocheck) {
@@ -116,7 +113,7 @@ static int do_getattr(const char *path, struct stat *st) {
 		st->st_mode = S_IFDIR | 0755; // directory
 		st->st_nlink = 2;
 	} else {
-		st->st_mode = S_IFREG;
+		st->st_mode = S_IFREG | 0664;
 		st->st_nlink = 1;     // file
 		st->st_size = 100000; // //1MB
 	}
@@ -149,7 +146,7 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 	if (str_startswith(path, "/get") == 0) {
 		strcpy(url, path);
 		url += 5;
-		answ = http_get(url, strlen(url));
+		http_get(url, strlen(url), &answ);
 
 	} else {
 		return -1;
@@ -178,7 +175,10 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 		memcpy(buffer, error, strlen(error));
 		ret = strlen(error);
 	}
-	free(answ.ptr);
+	if(size + offset >= answ.len)
+		free(answ.ptr);
+	//free(url);
+	//free(answ);
 	return ret;
 }
 
@@ -187,7 +187,7 @@ static int do_write(const char *path, const char *buffer, size_t size, off_t off
 	return 0;
 }
 
-static int do_mknod(const char *path, mode_t mode, dev_t rdev) {
+static int do_open(const char *path, struct fuse_file_info *fi) {
 	printf("::::::::::::::::::::::::.mknod::::::::::::::::");
 	return 0;
 }
@@ -197,9 +197,12 @@ static struct fuse_operations operations = {
     .readdir = do_readdir,
     .read = do_read,
     .write = do_write,
-    .mknod = do_mknod,
+    .open = do_open,
 };
 
 int main(int argc, char *argv[]) {
-	return fuse_main(argc, argv, &operations, NULL);
+	curl = curl_easy_init();
+	int ret = fuse_main(argc, argv, &operations, NULL);
+	curl_easy_cleanup(curl);
+	return ret;
 }
