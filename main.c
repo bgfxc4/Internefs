@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <errno.h>
 
 CURL *curl;
 
@@ -112,10 +113,12 @@ static int do_getattr(const char *path, struct stat *st) {
 
 		st->st_mode = S_IFDIR | 0755; // directory
 		st->st_nlink = 2;
-	} else {
+	} else if (str_startswith(path, "/get/") == 0){
 		st->st_mode = S_IFREG | 0664;
 		st->st_nlink = 1;     // file
 		st->st_size = 100000; // //1MB
+	} else {
+		return -ENOENT;
 	}
 
 	return 0;
@@ -182,13 +185,19 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 	return ret;
 }
 
-static int do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *info) {
-	printf("---------------------------------writing-----------------");
+static int do_write( const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *info )
+{
+	printf("::::::::::::::::::::::::::::write::::::::..");	
+	return 0;
+}
+
+static int do_mknod( const char *path, mode_t mode, dev_t rdev ) {
+	printf("---------------------------------mknod-----------------");
 	return 0;
 }
 
 static int do_open(const char *path, struct fuse_file_info *fi) {
-	printf("::::::::::::::::::::::::.mknod::::::::::::::::");
+	printf("::::::::::::::::::::::::open::::::::::::::::");
 	return 0;
 }
 
@@ -198,6 +207,7 @@ static struct fuse_operations operations = {
     .read = do_read,
     .write = do_write,
     .open = do_open,
+	.mknod = do_mknod,
 };
 
 int main(int argc, char *argv[]) {
