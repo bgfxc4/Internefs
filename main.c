@@ -59,7 +59,7 @@ int http_get(char *url, int urllength, struct string *s) {
 
 	char *encodedURL = curl_easy_unescape(curl, url, urllength, NULL);
 
-	printf("url: %s, length: %i, encodedURL: %s ", url, urllength, encodedURL);
+	printf("url: %s, length: %i, encodedURL: %s \n", url, urllength, encodedURL);
 
 	init_string(s);
 
@@ -113,10 +113,12 @@ static int do_getattr(const char *path, struct stat *st) {
 
 		st->st_mode = S_IFDIR | 0755; // directory
 		st->st_nlink = 2;
-	} else if (str_startswith(path, "/get/") == 0){
+	} else if (str_startswith(path, "/get/") == 0) {
 		st->st_mode = S_IFREG | 0664;
 		st->st_nlink = 1;     // file
-		st->st_size = 100000; // //1MB
+	} else if (str_startswith(path, "/post/") == 0) {
+		st->st_mode = S_IFREG | 0664;
+		st->st_nlink = 1;     // file
 	} else {
 		return -ENOENT;
 	}
@@ -140,8 +142,6 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 
 static int do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
 	printf("--> Trying to read %s, %u, %u\n", path, offset, size);
-
-  // fi->direct_io = 1;
 
 	struct string answ;
 	printf("%i", str_startswith(path, "/get"));
@@ -187,17 +187,13 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 
 static int do_write( const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *info )
 {
-	printf("::::::::::::::::::::::::::::write::::::::..");	
-	return 0;
-}
-
-static int do_mknod( const char *path, mode_t mode, dev_t rdev ) {
-	printf("---------------------------------mknod-----------------");
-	return 0;
+	printf("::::::::::::::::::::::::::::write::::::::..\n");	
+	return size;
 }
 
 static int do_open(const char *path, struct fuse_file_info *fi) {
-	printf("::::::::::::::::::::::::open::::::::::::::::");
+	fi->direct_io = 1;
+	printf("[open] called\n	opening  %s\n", path);
 	return 0;
 }
 
@@ -207,7 +203,6 @@ static struct fuse_operations operations = {
     .read = do_read,
     .write = do_write,
     .open = do_open,
-	.mknod = do_mknod,
 };
 
 int main(int argc, char *argv[]) {
