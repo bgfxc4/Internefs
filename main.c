@@ -20,6 +20,15 @@ struct string {
   int error;
 };
 
+struct open_post_req {
+	char *name;
+	char *content;
+	int content_len;
+};
+
+struct open_post_req **open_post_requests;
+int open_post_requests_length = 0;
+
 enum HTTP_KEK_ERRORS {
 	HTTP_ERROR_UNKNOWN = -1,
 	HTTP_ERROR_PROTOCOL_ERROR = -2,
@@ -37,6 +46,18 @@ void init_string(struct string *s) {
 		exit(EXIT_FAILURE);
 	}
 	s->ptr[0] = '\0';
+}
+
+void init_post_req(struct open_post_req *post, const char *name) {
+	post->name = malloc(strlen(name));
+	strcpy(post->name, name);
+	post->content_len = 0;
+	post->content = malloc(post->content_len + 1);
+	if(post->name == NULL | post->content == NULL){
+		fprintf(stderr, "malloc() failed\n");
+		exit(EXIT_FAILURE);
+	}
+	post->content[0] = '\0';
 }
 
 size_t writefunc(void *ptr, size_t size, size_t nmemb, struct string *s) {
@@ -101,6 +122,44 @@ int str_startswith(const char *str, char *tocheck) {
 	return 0;
 }
 
+int postreq_exists(char *name) {
+	for (int i = 0; i < open_post_requests_length; i++) {
+		printf("[postreq_exists]testing:%s, len:%i, i:%i\n", name, strlen(name), i);
+		if(strcmp(name, open_post_requests[i]->name) == 0){
+			return i;
+		}
+	}
+	return -1;
+}
+
+struct open_post_req *new_postreq(char *name) {
+	int ret = postreq_exists(name);
+	if (ret == -1) {
+		struct open_post_req *newpost = malloc(sizeof(struct open_post_req));
+		init_post_req(newpost, name);
+		open_post_requests_length += 1;
+		open_post_requests = realloc(open_post_requests, open_post_requests_length * sizeof(struct open_post_req*));
+		open_post_requests[open_post_requests_length - 1] = newpost;
+		return newpost;
+	} else {
+		init_post_req(open_post_requests[ret], name);	
+	}
+}
+
+int write_to_postreq(struct open_post_req *postreq, const char *string) {
+	size_t new_len = postreq->content_len + strlen(string);
+	postreq->content = realloc(postreq->content, new_len + 1);
+	if(postreq->content == NULL) {
+		fprintf(stderr, "realloc() failed\n");
+		exit(EXIT_FAILURE);
+	}
+	memcpy(postreq->content + postreq->content_len, string, strlen(string));
+	postreq->content[new_len] = '\n';
+	postreq->content_len = new_len;
+
+	return 0;
+}
+
 static int do_getattr(const char *path, struct stat *st) {
 	printf("[getattr] Called\n");
 	printf("\tAttributes of %s requested\n", path);
@@ -135,8 +194,16 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 	if (strcmp(path, "/") == 0) {
 		filler(buffer, "get", NULL, 0);
 		filler(buffer, "post", NULL, 0);
+	}else if (strcmp(path, "/post") == 0) {
+		for (int i = 0; i < open_post_requests_length; i ++) {
+			printf("%p test\n", open_post_requests[i]);
+			if(open_post_requests[i] != NULL) {
+				printf("%s\n", open_post_requests[i]->name);
+				filler(buffer, open_post_requests[i]->name, NULL, 0);	
+			}	
+		}
 	}
-
+	
 	return 0;
 }
 
@@ -144,13 +211,25 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 	printf("--> Trying to read %s, %u, %u\n", path, offset, size);
 
 	struct string answ;
-	printf("%i", str_startswith(path, "/get"));
 	char *url = malloc(strlen(path) + 1);
-	if (str_startswith(path, "/get") == 0) {
+	if (str_startswith(path, "/get/") == 0) {
 		strcpy(url, path);
 		url += 5;
 		http_get(url, strlen(url), &answ);
 
+	} else if (str_startswith(path, "/post/") == 0) {
+		strcpy(url, path);
+		url += 6;
+		int p_ret = postreq_exists(url);
+		if(p_ret != -1) {
+			answ.len = open_post_requests[p_ret]->content_len;
+			answ.ptr = malloc(answ.len);
+			strcpy(answ.ptr, open_post_requests[p_ret]->content);
+			printf("reading:%s\n", answ.ptr);
+			answ.error = 0;
+		} else {
+			return -ENOENT;
+		}
 	} else {
 		return -1;
 	}
@@ -185,15 +264,44 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 	return ret;
 }
 
-static int do_write( const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *info )
-{
-	printf("::::::::::::::::::::::::::::write::::::::..\n");	
+static int do_write( const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *info ) {
+	printf("[write] called\n\twriting to %s\n", path);	
+	
+	if (str_startswith(path, "/post/") == 0) {
+		printf("writing: %s\n", buffer);
+		char *reqname = malloc(strlen(path) + 1);
+		strcpy(reqname, path);
+		reqname += 6;
+		int ret = postreq_exists(reqname);
+		if(ret != -1) {
+			write_to_postreq(open_post_requests[ret], buffer);
+		} else {
+			return -1;
+		} 
+	}
+
 	return size;
 }
 
 static int do_open(const char *path, struct fuse_file_info *fi) {
 	fi->direct_io = 1;
-	printf("[open] called\n	opening  %s\n", path);
+	printf("[open] called\n\topening  %s\n", path);
+	return 0;
+}
+
+static int do_create (const char *path, mode_t mode, struct fuse_file_info *fi){
+	printf("[create] called\n\tcreating  %s\n", path);
+	return 0;
+}
+
+static int do_truncate (const char *path, off_t offset) {
+	printf("[truncate] called\n\ton %s with offset %i\n", path, offset);
+	if(str_startswith(path, "/post/") == 0) {
+		char *file_name = malloc(strlen(path));
+		strcpy(file_name, path);
+		file_name += 6;
+		new_postreq(file_name);
+	}
 	return 0;
 }
 
@@ -203,9 +311,25 @@ static struct fuse_operations operations = {
     .read = do_read,
     .write = do_write,
     .open = do_open,
+	.create = do_create,
+	.truncate = do_truncate,
 };
 
+
+void testing() {
+	new_postreq("test");
+	new_postreq("test2");
+
+	/*for (int i = 0; i < open_post_requests_length; i ++) {
+		printf("%p test\n", open_post_requests[i]);
+		if(open_post_requests[i] != NULL) {
+			printf("name: %s\n", open_post_requests[i]->name);
+		}	
+	}*/
+}
+
 int main(int argc, char *argv[]) {
+	//testing();
 	curl = curl_easy_init();
 	int ret = fuse_main(argc, argv, &operations, NULL);
 	curl_easy_cleanup(curl);
