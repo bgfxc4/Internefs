@@ -216,7 +216,8 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 		strcpy(url, path);
 		url += 5;
 		http_get(url, strlen(url), &answ);
-
+		url -= 5;
+		free(url);
 	} else if (str_startswith(path, "/post/") == 0) {
 		strcpy(url, path);
 		url += 6;
@@ -227,10 +228,15 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 			strcpy(answ.ptr, open_post_requests[p_ret]->content);
 			printf("reading:%s\n", answ.ptr);
 			answ.error = 0;
+			url -= 6;
+			free(url);
 		} else {
+			url -= 6;
+			free(url);
 			return -ENOENT;
 		}
 	} else {
+		free(url);
 		return -1;
 	}
 
@@ -257,8 +263,9 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 		memcpy(buffer, error, strlen(error));
 		ret = strlen(error);
 	}
-	if(size + offset >= answ.len)
+	if(size + offset >= answ.len) {
 		free(answ.ptr);
+	}
 	//free(url);
 	//free(answ);
 	return ret;
@@ -273,13 +280,14 @@ static int do_write( const char *path, const char *buffer, size_t size, off_t of
 		strcpy(reqname, path);
 		reqname += 6;
 		int ret = postreq_exists(reqname);
+		reqname -= 6;
+		free(reqname);
 		if(ret != -1) {
 			write_to_postreq(open_post_requests[ret], buffer);
 		} else {
 			return -1;
 		} 
 	}
-
 	return size;
 }
 
@@ -301,6 +309,8 @@ static int do_truncate (const char *path, off_t offset) {
 		strcpy(file_name, path);
 		file_name += 6;
 		new_postreq(file_name);
+		file_name -= 6;
+		free(file_name);
 	}
 	return 0;
 }
