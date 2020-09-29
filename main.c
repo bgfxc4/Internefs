@@ -124,7 +124,7 @@ int str_startswith(const char *str, char *tocheck) {
 
 int postreq_exists(char *name) {
 	for (int i = 0; i < open_post_requests_length; i++) {
-		printf("[postreq_exists]testing:%s, len:%i, i:%i\n", name, strlen(name), i);
+		printf("[postreq_exists]testing:%s, len:%li, i:%i\n", name, strlen(name), i);
 		if(strcmp(name, open_post_requests[i]->name) == 0){
 			return i;
 		}
@@ -208,7 +208,7 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 }
 
 static int do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
-	printf("--> Trying to read %s, %u, %u\n", path, offset, size);
+	printf("--> Trying to read %s, %lu, %lu\n", path, offset, size);
 
 	struct string answ;
 	char *url = malloc(strlen(path) + 1);
@@ -245,7 +245,7 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 		// printf("KE:LEN:%i\n", answ.len);
 		memcpy(buffer, answ.ptr + offset, min(answ.len - offset, size));
 		ret = min(answ.len - offset, size);
-		printf("%i + %i + %i", size, answ.len, strlen(answ.ptr));
+		printf("%li + %li + %li", size, answ.len, strlen(answ.ptr));
 		// printf("%s", answ.ptr);
 	} else {
 		char *error;
@@ -303,7 +303,7 @@ static int do_create (const char *path, mode_t mode, struct fuse_file_info *fi){
 }
 
 static int do_truncate (const char *path, off_t offset) {
-	printf("[truncate] called\n\ton %s with offset %i\n", path, offset);
+	printf("[truncate] called\n\ton %s with offset %li\n", path, offset);
 	if(str_startswith(path, "/post/") == 0) {
 		char *file_name = malloc(strlen(path));
 		strcpy(file_name, path);
@@ -315,6 +315,12 @@ static int do_truncate (const char *path, off_t offset) {
 	return 0;
 }
 
+int	do_unlink(const char *path) {
+	printf("[unlink] called\n\tdelete %s\n", path);
+	return 0;
+}
+
+
 static struct fuse_operations operations = {
     .getattr = do_getattr,
     .readdir = do_readdir,
@@ -323,6 +329,7 @@ static struct fuse_operations operations = {
     .open = do_open,
 	.create = do_create,
 	.truncate = do_truncate,
+	.unlink = do_unlink,
 };
 
 
