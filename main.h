@@ -38,5 +38,5 @@ enum HTTP_KEK_ERRORS {
 	HTTP_ERROR_NON_EXISTING_DOMAIN = -5
 };
 
-int http_get(char *url, int urllength, struct string *s);
+int http_get(const char *url, int urllength, struct string *s);
 #endif

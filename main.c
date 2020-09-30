@@ -19,7 +19,7 @@ CURL *curl;
 struct open_post_req **open_post_requests;
 int open_post_requests_length = 0;
 
-int http_get(char *url, int urllength, struct string *s) {
+int http_get(const char *url, int urllength, struct string *s) {
 
 	CURLcode res;
 

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fuse.h>
+#include <stdint.h>
 
 #include "./helpers.h"
 #include "./main.h"
@@ -18,6 +19,7 @@ int do_open(const char *path, struct fuse_file_info *fi);
 int do_create (const char *path, mode_t mode, struct fuse_file_info *fi);
 int do_truncate (const char *path, off_t offset);
 int	do_unlink(const char *path);
+int do_release(const char *path, struct fuse_file_info *fi);
 
 struct fuse_operations operations = {
     .getattr = do_getattr,
@@ -28,6 +30,7 @@ struct fuse_operations operations = {
 	.create = do_create,
 	.truncate = do_truncate,
 	.unlink = do_unlink,
+	.release = do_release,
 };
 
 #endif

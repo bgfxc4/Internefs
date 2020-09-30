@@ -1,5 +1,7 @@
 #define FUSE_USE_VERSION 30
 
+
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <fuse.h>
@@ -57,64 +59,51 @@ int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t off
 int do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
 	printf("--> Trying to read %s, %lu, %lu\n", path, offset, size);
 
-	struct string answ;
-	char *url = malloc(strlen(path) + 1);
+struct string *answ;
 	if (str_startswith(path, "/get/") == 0) {
-		strcpy(url, path);
-		url += 5;
-		http_get(url, strlen(url), &answ);
-		url -= 5;
-		free(url);
+		path += 5;
+		answ = (struct string *)fi->fh;
+		printf("%lu\n", answ->ptr);
 	} else if (str_startswith(path, "/post/") == 0) {
-		strcpy(url, path);
-		url += 6;
-		int p_ret = postreq_exists(url);
+		path += 6;
+		int p_ret = postreq_exists(path);
 		if(p_ret != -1) {
-			answ.len = open_post_requests[p_ret]->content_len;
-			answ.ptr = malloc(answ.len);
-			strcpy(answ.ptr, open_post_requests[p_ret]->content);
-			printf("reading:%s\n", answ.ptr);
-			answ.error = 0;
-			url -= 6;
-			free(url);
+			answ->len = open_post_requests[p_ret]->content_len;
+			answ->ptr = malloc(answ->len);
+			strcpy(answ->ptr, open_post_requests[p_ret]->content);
+			printf("reading:%s\n", answ->ptr);
+			answ->error = 0;
 		} else {
-			url -= 6;
-			free(url);
 			return -ENOENT;
 		}
 	} else {
-		free(url);
 		return -1;
 	}
 
 	int ret;
-	if (answ.error == 0) {
+	if (answ->error == 0) {
 		// printf("KE:LEN:%i\n", answ.len);
-		memcpy(buffer, answ.ptr + offset, min(answ.len - offset, size));
-		ret = min(answ.len - offset, size);
-		printf("%li + %li + %li", size, answ.len, strlen(answ.ptr));
+		memcpy(buffer, answ->ptr + offset, min(answ->len - offset, size));
+		ret = min(answ->len - offset, size);
+		//printf("%li + %li + %li\n", size, answ->len, strlen(answ->ptr));
 		// printf("%s", answ.ptr);
 	} else {
 		char *error;
-		if (answ.error == HTTP_ERROR_UNKNOWN)
+		if (answ->error == HTTP_ERROR_UNKNOWN)
 			error = "Internefs goes BLUB BLUB: something went wrong!\n";
-		else if (answ.error == HTTP_ERROR_PROTOCOL_ERROR)
+		else if (answ->error == HTTP_ERROR_PROTOCOL_ERROR)
 			error = "Internefs goes BLUB BLUB: KEK use another Protocol!\n";
-		else if (answ.error == HTTP_ERROR_INVALID_URL)
+		else if (answ->error == HTTP_ERROR_INVALID_URL)
 			error = "Internefs goes BLUB BLUB: KEK format your URL right!\n";
-		else if (answ.error == HTTP_ERROR_CANT_CONNECT_TO_SERVER)
+		else if (answ->error == HTTP_ERROR_CANT_CONNECT_TO_SERVER)
 			error = "Internefs goes BLUB BLUB: couldnt connect to the server!\n";
-		else if (answ.error == HTTP_ERROR_NON_EXISTING_DOMAIN)
+		else if (answ->error == HTTP_ERROR_NON_EXISTING_DOMAIN)
 			error = "Internefs goes BLUB BLUB: KEK use an existing domain!\n";
 
 		memcpy(buffer, error, strlen(error));
 		ret = strlen(error);
 	}
-	if(size + offset >= answ.len) {
-		free(answ.ptr);
-	}
-	//free(url);
-	//free(answ);
+	printf("KEKKEKKEKKKKKEKKEKKEK\n\n");
 	return ret;
 }
 
@@ -141,6 +130,16 @@ int do_write( const char *path, const char *buffer, size_t size, off_t offset, s
 int do_open(const char *path, struct fuse_file_info *fi) {
 	fi->direct_io = 1;
 	printf("[open] called\n\topening  %s\n", path);
+
+	if(str_startswith(path, "/get/") == 0) {
+		struct string *answ = malloc(sizeof(*answ));
+		path += 5;
+		http_get(path, strlen(path), answ);
+		printf("%s\n", answ->ptr);
+		printf("%lu\n", fi->fh);
+		fi->fh = (uint64_t)answ;
+	}
+
 	return 0;
 }
 
@@ -162,7 +161,19 @@ int do_truncate (const char *path, off_t offset) {
 	return 0;
 }
 
-int	do_unlink(const char *path) {
+int	do_unlink (const char *path) {
 	printf("[unlink] called\n\tdelete %s\n", path);
 	return 0;
+}
+
+int do_release (const char *path, struct fuse_file_info *fi) {
+	printf("[release] called\n\treleasing %s\n", path);
+	
+	if (str_startswith(path, "/get/") == 0) {
+		struct string *tofree = (struct string *)fi->fh;
+		free(tofree->ptr);
+		free(tofree);
+	}
+
+	return 0; 
 }

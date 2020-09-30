@@ -29,7 +29,7 @@ void init_post_req(struct open_post_req *post, const char *name) {
 	post->content[0] = '\0';
 }
 
-int postreq_exists(char *name) {
+int postreq_exists(const char *name) {
 	for (int i = 0; i < open_post_requests_length; i++) {
 		printf("[postreq_exists]testing:%s, len:%li, i:%i\n", name, strlen(name), i);
 		if(strcmp(name, open_post_requests[i]->name) == 0){
