@@ -25,8 +25,6 @@ int http_get(const char *url, int urllength, struct string *s) {
 
 	char *encodedURL = curl_easy_unescape(curl, url, urllength, NULL);
 
-	printf("url: %s, length: %i, encodedURL: %s \n", url, urllength, encodedURL);
-
 	init_string(s);
 
 	if (curl) {
@@ -53,7 +51,6 @@ int http_get(const char *url, int urllength, struct string *s) {
 			else
 				s->error = -1;
 		}
-		// printf("s: %s slen: %i\n", s.ptr, s.len);
 	}
 	curl_free(encodedURL);
 	return 0;
