@@ -22,6 +22,7 @@ struct string {
   char *ptr;
   size_t len;
   int error;
+  int already_requested;
 };
 
 struct open_post_req {

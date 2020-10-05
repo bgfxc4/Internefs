@@ -10,6 +10,7 @@ void init_string(struct string *s) {
 	s->len = 0;
 	s->ptr = malloc(s->len + 1);
 	s->error = 0;
+	s->already_requested = 1;
 	if (s->ptr == NULL) {
 		fprintf(stderr, "malloc() failed\n");
 		exit(EXIT_FAILURE);
@@ -87,5 +88,17 @@ int write_to_postreq(struct open_post_req *postreq, const char *string) {
 	postreq->content_len = new_len;
 
 	return 0;
+}
+
+void cleanup_postreqs() {
+	printf("[cleaning up] called\n\tcleaning up postreqs\n");
+	for (int i = 0; i < open_post_requests_length; i++) {
+		if(open_post_requests[i] != NULL){
+			free(open_post_requests[i]->content);
+			free(open_post_requests[i]->name);
+			free(open_post_requests[i]);
+		}
+	}
+	free(open_post_requests);
 }
 

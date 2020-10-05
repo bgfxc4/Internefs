@@ -45,7 +45,9 @@ int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t off
 		filler(buffer, "post", NULL, 0);
 	}else if (strcmp(path, "/post") == 0) {
 		for (int i = 0; i < open_post_requests_length; i ++) {
+			printf("%p test\n", open_post_requests[i]);
 			if(open_post_requests[i] != NULL) {
+				printf("%s\n", open_post_requests[i]->name);
 				filler(buffer, open_post_requests[i]->name, NULL, 0);	
 			}	
 		}
@@ -61,6 +63,7 @@ struct string *answ;
 	if (str_startswith(path, "/get/") == 0) {
 		path += 5;
 		answ = (struct string *)fi->fh;
+		printf("%lu\n", answ->ptr);
 	} else if (str_startswith(path, "/post/") == 0) {
 		path += 6;
 		int p_ret = postreq_exists(path);
@@ -68,6 +71,7 @@ struct string *answ;
 			answ->len = open_post_requests[p_ret]->content_len;
 			answ->ptr = malloc(answ->len);
 			strcpy(answ->ptr, open_post_requests[p_ret]->content);
+			printf("reading:%s\n", answ->ptr);
 			answ->error = 0;
 		} else {
 			return -ENOENT;
@@ -78,8 +82,11 @@ struct string *answ;
 
 	int ret;
 	if (answ->error == 0) {
+		// printf("KE:LEN:%i\n", answ.len);
 		memcpy(buffer, answ->ptr + offset, min(answ->len - offset, size));
 		ret = min(answ->len - offset, size);
+		//printf("%li + %li + %li\n", size, answ->len, strlen(answ->ptr));
+		// printf("%s", answ.ptr);
 	} else {
 		char *error;
 		if (answ->error == HTTP_ERROR_UNKNOWN)
@@ -95,7 +102,15 @@ struct string *answ;
 
 		memcpy(buffer, error, strlen(error));
 		ret = strlen(error);
+		printf("--------------------------%i\n", answ->already_requested);
+		if(answ->already_requested == 1) {
+			answ->already_requested = 0;
+			return ret;
+		} else {
+			return 0;
+		}
 	}
+	printf("KEKKEKKEKKKKKEKKEKKEK\n\n");
 	return ret;
 }
 
@@ -103,6 +118,7 @@ int do_write( const char *path, const char *buffer, size_t size, off_t offset, s
 	printf("[write] called\n\twriting to %s\n", path);	
 	
 	if (str_startswith(path, "/post/") == 0) {
+		printf("writing: %s\n", buffer);
 		char *reqname = malloc(strlen(path) + 1);
 		strcpy(reqname, path);
 		reqname += 6;
@@ -126,6 +142,8 @@ int do_open(const char *path, struct fuse_file_info *fi) {
 		struct string *answ = malloc(sizeof(*answ));
 		path += 5;
 		http_get(path, strlen(path), answ);
+		printf("%s\n", answ->ptr);
+		printf("%lu\n", fi->fh);
 		fi->fh = (uint64_t)answ;
 	}
 

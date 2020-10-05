@@ -14,5 +14,5 @@ int str_startswith(const char *str, char *tocheck);
 int postreq_exists(const char *name);
 struct open_post_req *new_postreq(char *name);
 int write_to_postreq(struct open_post_req *postreq, const char *string);
-
+void cleanup_postreqs();
 #endif
