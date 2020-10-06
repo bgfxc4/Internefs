@@ -63,7 +63,7 @@ struct string *answ;
 	if (str_startswith(path, "/get/") == 0) {
 		path += 5;
 		answ = (struct string *)fi->fh;
-		printf("%lu\n", answ->ptr);
+		printf("%s\n", answ->ptr);
 	} else if (str_startswith(path, "/post/") == 0) {
 		path += 6;
 		int p_ret = postreq_exists(path);
@@ -82,11 +82,8 @@ struct string *answ;
 
 	int ret;
 	if (answ->error == 0) {
-		// printf("KE:LEN:%i\n", answ.len);
 		memcpy(buffer, answ->ptr + offset, min(answ->len - offset, size));
 		ret = min(answ->len - offset, size);
-		//printf("%li + %li + %li\n", size, answ->len, strlen(answ->ptr));
-		// printf("%s", answ.ptr);
 	} else {
 		char *error;
 		if (answ->error == HTTP_ERROR_UNKNOWN)

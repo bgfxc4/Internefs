@@ -66,7 +66,7 @@ void testing() {
 
 	/*for (int i = 0; i < open_post_requests_length; i ++) {
 		printf("%p test\n", open_post_requests[i]);
-		if(open_post_requests[i] != NULL) {
+ called from curl\n		if(open_post_requests[i] != NULL) {
 			printf("name: %s\n", open_post_requests[i]->name);
 		}	
 	}*/
