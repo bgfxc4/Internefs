@@ -41,6 +41,7 @@ int postreq_exists(const char *name) {
 }
 
 size_t writefunc(void *ptr, size_t size, size_t nmemb, struct string *s) {
+	printf("[writefunc] called from curl\n");
 	size_t new_len = s->len + size * nmemb;
 	s->ptr = realloc(s->ptr, new_len + 1);
 	if (s->ptr == NULL) {
