@@ -14,14 +14,15 @@
 #include "./helpers.h"
 #include "./fuse_ops.h"
 
-CURL *curl;
-
 struct open_post_req **open_post_requests;
 int open_post_requests_length = 0;
 
 int http_get(const char *url, int urllength, struct string *s) {
-
+	
+	CURL *curl;
 	CURLcode res;
+
+	curl = curl_easy_init();
 
 	char *encodedURL = curl_easy_unescape(curl, url, urllength, NULL);
 
@@ -56,6 +57,7 @@ int http_get(const char *url, int urllength, struct string *s) {
 		// printf("s: %s slen: %i\n", s.ptr, s.len);
 	}
 	curl_free(encodedURL);
+	curl_easy_cleanup(curl);
 	return 0;
 }
 
@@ -74,9 +76,7 @@ void testing() {
 
 int main(int argc, char *argv[]) {
 	//testing();
-	curl = curl_easy_init();
 	int ret = fuse_main(argc, argv, &operations, NULL);
-	curl_easy_cleanup(curl);
 	printf("[cleaning up]\n");
 	cleanup_postreqs();
 	return ret;
