@@ -115,7 +115,6 @@ int do_write( const char *path, const char *buffer, size_t size, off_t offset, s
 	printf("[write] called\n\twriting to %s\n", path);	
 	
 	if (str_startswith(path, "/post/") == 0) {
-		printf("writing: %s\n", buffer);
 		char *reqname = malloc(strlen(path) + 1);
 		strcpy(reqname, path);
 		reqname += 6;
@@ -123,7 +122,7 @@ int do_write( const char *path, const char *buffer, size_t size, off_t offset, s
 		reqname -= 6;
 		free(reqname);
 		if(ret != -1) {
-			write_to_postreq(open_post_requests[ret], buffer);
+			write_to_postreq(open_post_requests[ret], buffer, size);
 		} else {
 			return -1;
 		} 
@@ -143,7 +142,6 @@ int do_open(const char *path, struct fuse_file_info *fi) {
 		printf("%lu\n", fi->fh);
 		fi->fh = (uint64_t)answ;
 	}
-
 	return 0;
 }
 
@@ -155,7 +153,7 @@ int do_create (const char *path, mode_t mode, struct fuse_file_info *fi){
 int do_truncate (const char *path, off_t offset) {
 	printf("[truncate] called\n\ton %s with offset %li\n", path, offset);
 	if(str_startswith(path, "/post/") == 0) {
-		char *file_name = malloc(strlen(path));
+		char *file_name = malloc(strlen(path) + 1);
 		strcpy(file_name, path);
 		file_name += 6;
 		new_postreq(file_name);

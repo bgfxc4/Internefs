@@ -19,7 +19,7 @@ void init_string(struct string *s) {
 }
 
 void init_post_req(struct open_post_req *post, const char *name) {
-	post->name = malloc(strlen(name));
+	post->name = malloc(strlen(name) + 1);
 	strcpy(post->name, name);
 	post->content_len = 0;
 	post->content = malloc(post->content_len + 1);
@@ -77,14 +77,14 @@ struct open_post_req *new_postreq(char *name) {
 	}
 }
 
-int write_to_postreq(struct open_post_req *postreq, const char *string) {
-	size_t new_len = postreq->content_len + strlen(string);
+int write_to_postreq(struct open_post_req *postreq, const char *string, size_t str_length) {
+	size_t new_len = postreq->content_len + str_length;
 	postreq->content = realloc(postreq->content, new_len + 1);
 	if(postreq->content == NULL) {
 		fprintf(stderr, "realloc() failed\n");
 		exit(EXIT_FAILURE);
 	}
-	memcpy(postreq->content + postreq->content_len, string, strlen(string));
+	memcpy(postreq->content + postreq->content_len, string, str_length);
 	postreq->content[new_len] = '\n';
 	postreq->content_len = new_len;
 
