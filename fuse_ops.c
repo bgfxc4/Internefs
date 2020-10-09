@@ -6,8 +6,9 @@
 #include <stdlib.h>
 #include <fuse.h>
 
-#include "./helpers.h"
 #include "./main.h"
+#include "./helpers.h"
+#include "./http.h"
 
 int do_getattr(const char *path, struct stat *st) {
 	printf("[getattr] Called\n");

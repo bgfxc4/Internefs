@@ -29,6 +29,7 @@ struct open_post_req {
 	char *name;
 	char *content;
 	int content_len;
+	struct string *answ;
 };
 
 enum HTTP_KEK_ERRORS {
@@ -38,6 +39,4 @@ enum HTTP_KEK_ERRORS {
 	HTTP_ERROR_CANT_CONNECT_TO_SERVER = -4,
 	HTTP_ERROR_NON_EXISTING_DOMAIN = -5
 };
-
-int http_get(const char *url, int urllength, struct string *s);
 #endif

@@ -23,10 +23,14 @@ void init_post_req(struct open_post_req *post, const char *name) {
 	strcpy(post->name, name);
 	post->content_len = 0;
 	post->content = malloc(post->content_len + 1);
-	if(post->name == NULL | post->content == NULL){
+	post->answ = malloc(sizeof(*(post->answ)));
+	init_string(post->answ);
+
+	if(post->name == NULL || post->content == NULL || post->answ == NULL){
 		fprintf(stderr, "malloc() failed\n");
 		exit(EXIT_FAILURE);
 	}
+
 	post->content[0] = '\0';
 }
 
@@ -40,8 +44,23 @@ int postreq_exists(const char *name) {
 	return -1;
 }
 
-size_t writefunc(void *ptr, size_t size, size_t nmemb, struct string *s) {
-	printf("[writefunc] called from curl\n");
+size_t writefunc_get(void *ptr, size_t size, size_t nmemb, struct string *s) {
+	printf("[writefunc_get] called from curl\n");
+	size_t new_len = s->len + size * nmemb;
+	s->ptr = realloc(s->ptr, new_len + 1);
+	if (s->ptr == NULL) {
+		fprintf(stderr, "realloc() failed\n");
+		exit(EXIT_FAILURE);
+	}
+	memcpy(s->ptr + s->len, ptr, size * nmemb);
+	s->ptr[new_len] = '\0';
+	s->len = new_len;
+
+	return size * nmemb;
+}
+
+size_t writefunc_post(void *ptr, size_t size, size_t nmemb, struct string *s) {
+	printf("[writefunc_post] called from curl\n");
 	size_t new_len = s->len + size * nmemb;
 	s->ptr = realloc(s->ptr, new_len + 1);
 	if (s->ptr == NULL) {
@@ -97,6 +116,8 @@ void cleanup_postreqs() {
 		if(open_post_requests[i] != NULL){
 			free(open_post_requests[i]->content);
 			free(open_post_requests[i]->name);
+			free(open_post_requests[i]->answ->ptr);
+			free(open_post_requests[i]->answ);
 			free(open_post_requests[i]);
 		}
 	}
