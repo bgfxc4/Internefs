@@ -12,7 +12,7 @@
 
 int do_getattr(const char *path, struct stat *st) {
 	printf("[getattr] Called\n");
-	printf("\tAttributes of %s requested\n", path);
+	printf("\tAttributes of %s requested\n", path);	
 
 	st->st_uid = getuid();
 	st->st_gid = getgid();
@@ -26,6 +26,9 @@ int do_getattr(const char *path, struct stat *st) {
 		st->st_mode = S_IFREG | 0664;
 		st->st_nlink = 1;     // file
 	} else if (str_startswith(path, "/post/") == 0) {
+		const char *filename = path;
+		filename += 6;
+		if(postreq_exists(filename) == -1) return -ENOENT;
 		st->st_mode = S_IFREG | 0664;
 		st->st_nlink = 1;     // file
 	} else {
@@ -69,9 +72,11 @@ struct string *answ;
 		path += 6;
 		int p_ret = postreq_exists(path);
 		if(p_ret != -1) {
-			answ->len = open_post_requests[p_ret]->content_len;
-			answ->ptr = malloc(answ->len);
-			strcpy(answ->ptr, open_post_requests[p_ret]->content);
+			answ = (struct string *)fi->fh;
+			http_post(open_post_requests[p_ret]);
+			answ->len = open_post_requests[p_ret]->answ->len;
+			answ->ptr = malloc(answ->len + 1);
+			strcpy(answ->ptr, open_post_requests[p_ret]->answ->ptr);
 			printf("reading:%s\n", answ->ptr);
 			answ->error = 0;
 		} else {
@@ -108,7 +113,6 @@ struct string *answ;
 			return 0;
 		}
 	}
-	printf("KEKKEKKEKKKKKEKKEKKEK\n\n");
 	return ret;
 }
 
@@ -139,33 +143,49 @@ int do_open(const char *path, struct fuse_file_info *fi) {
 		struct string *answ = malloc(sizeof(*answ));
 		path += 5;
 		http_get(path, strlen(path), answ);
-		printf("%s\n", answ->ptr);
-		printf("%lu\n", fi->fh);
 		fi->fh = (uint64_t)answ;
+	}else if (str_startswith(path, "/post/") == 0) {
+		struct string *answ = malloc(sizeof(*answ));
+		init_string(answ);
+		fi->fh = (uint64_t)answ;	
 	}
 	return 0;
 }
 
 int do_create (const char *path, mode_t mode, struct fuse_file_info *fi){
 	printf("[create] called\n\tcreating  %s\n", path);
+	if(str_startswith(path, "/post/") == 0) {
+		const char *file_name = path;
+		file_name += 6;
+		new_postreq(file_name);
+		struct string *answ = malloc(sizeof(*answ));
+		init_string(answ);
+		fi->fh = (uint64_t)answ;
+	}
 	return 0;
 }
 
 int do_truncate (const char *path, off_t offset) {
 	printf("[truncate] called\n\ton %s with offset %li\n", path, offset);
 	if(str_startswith(path, "/post/") == 0) {
-		char *file_name = malloc(strlen(path) + 1);
-		strcpy(file_name, path);
+		const char *file_name = path;
 		file_name += 6;
 		new_postreq(file_name);
-		file_name -= 6;
-		free(file_name);
 	}
 	return 0;
 }
 
 int	do_unlink (const char *path) {
 	printf("[unlink] called\n\tdelete %s\n", path);
+	if(str_startswith(path, "/post/") == 0) {
+		path += 6;
+		int ret = postreq_exists(path);
+		if(ret == -1) {
+			return -ENOENT;
+		} else {
+			delete_postreq(open_post_requests[ret]);
+		}
+	}
 	return 0;
 }
 
@@ -176,7 +196,10 @@ int do_release (const char *path, struct fuse_file_info *fi) {
 		struct string *tofree = (struct string *)fi->fh;
 		free(tofree->ptr);
 		free(tofree);
+	} else if (str_startswith(path, "/post/") == 0) {
+		struct string *tofree = (struct string *)fi->fh;
+		free(tofree->ptr);
+		free(tofree);
 	}
-
 	return 0; 
 }

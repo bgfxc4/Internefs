@@ -27,6 +27,7 @@ struct string {
 
 struct open_post_req {
 	char *name;
+	int name_len;
 	char *content;
 	int content_len;
 	struct string *answ;

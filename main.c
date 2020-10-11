@@ -24,7 +24,6 @@ void testing() {
 }
 
 int main(int argc, char *argv[]) {
-	testing();
 	int ret = fuse_main(argc, argv, &operations, NULL);
 	printf("[cleaning up]\n");
 	cleanup_postreqs();

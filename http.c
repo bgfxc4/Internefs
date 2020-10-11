@@ -41,7 +41,6 @@ int http_get(const char *url, int urllength, struct string *s) {
 			else
 				s->error = -1;
 		}
-		// printf("s: %s slen: %i\n", s.ptr, s.len);
 	}
 	curl_free(encodedURL);
 	curl_easy_cleanup(curl);
@@ -49,27 +48,29 @@ int http_get(const char *url, int urllength, struct string *s) {
 }
 
 int http_post(struct open_post_req *req) {
+	printf("[http_post] called\n\tname: %s content: %s\n", req->name, req->content);
 	CURL *curl;
 	CURLcode res;
 	
-	//init_string(req->answ);
-
 	curl = curl_easy_init();
+	init_string(req->answ);
+	char *encodedURL = curl_easy_unescape(curl, req->name, req->name_len, NULL);
 	if(curl) {
-		curl_easy_setopt(curl, CURLOPT_URL, req->name);
+		curl_easy_setopt(curl, CURLOPT_URL, encodedURL);
 		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc_post);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, req->answ);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, req->content);
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
- 
+
 		res = curl_easy_perform(curl);
 		if(res != CURLE_OK)
 			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
  
 		curl_easy_cleanup(curl);
-		printf("answ: %.*s\n", req->answ->len, req->answ->ptr);
 	}
+	curl_free(encodedURL);
 	curl_global_cleanup();
+	return 0;
 }
 
