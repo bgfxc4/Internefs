@@ -9,10 +9,10 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "./main.h"
-#include "./helpers.h"
-#include "./fuse_ops.h"
-#include "./http.h"
+#include "main.h"
+#include "helpers.h"
+#include "fuse_ops.h"
+#include "http.h"
 
 struct open_post_req **open_post_requests;
 int open_post_requests_length = 0;

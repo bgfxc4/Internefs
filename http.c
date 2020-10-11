@@ -2,8 +2,8 @@
 #include <curl/curl.h>
 #include <curl/easy.h>
 #include <stdio.h>
-#include "./helpers.h"
-#include "./main.h"
+#include "helpers.h"
+#include "main.h"
 
 int http_get(const char *url, int urllength, struct string *s) {
 	

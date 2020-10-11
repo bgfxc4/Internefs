@@ -8,8 +8,8 @@
 #include <fuse.h>
 #include <stdint.h>
 
-#include "./helpers.h"
-#include "./main.h"
+#include "helpers.h"
+#include "main.h"
 
 int do_getattr(const char *path, struct stat *st);
 int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi);
