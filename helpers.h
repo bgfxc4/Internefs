@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "./main.h"
+#include "main.h"
 
 void init_string(struct string *s);
 void init_post_req(struct open_post_req *post, const char *name);
