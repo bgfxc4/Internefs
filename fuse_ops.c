@@ -73,10 +73,12 @@ struct string *answ;
 		int p_ret = postreq_exists(path);
 		if(p_ret != -1) {
 			answ = (struct string *)fi->fh;
-			http_post(open_post_requests[p_ret]);
-			answ->len = open_post_requests[p_ret]->answ->len;
-			answ->ptr = malloc(answ->len + 1);
-			strcpy(answ->ptr, open_post_requests[p_ret]->answ->ptr);
+			if(offset == 0) {
+				http_post(open_post_requests[p_ret]);
+				answ->len = open_post_requests[p_ret]->answ->len;
+				answ->ptr = realloc(answ->ptr, answ->len + 1);
+				strcpy(answ->ptr, open_post_requests[p_ret]->answ->ptr);
+			}
 			printf("reading:%s\n", answ->ptr);
 			answ->error = 0;
 		} else {
