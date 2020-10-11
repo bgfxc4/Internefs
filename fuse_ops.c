@@ -184,6 +184,7 @@ int	do_unlink (const char *path) {
 			return -ENOENT;
 		} else {
 			delete_postreq(open_post_requests[ret]);
+
 		}
 	}
 	return 0;

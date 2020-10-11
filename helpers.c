@@ -8,14 +8,9 @@
 
 void init_string(struct string *s) {
 	s->len = 0;
-	s->ptr = malloc(s->len + 1);
+	s->ptr = NULL;
 	s->error = 0;
 	s->already_requested = 1;
-	if (s->ptr == NULL) {
-		fprintf(stderr, "malloc() failed\n");
-		exit(EXIT_FAILURE);
-	}
-	s->ptr[0] = '\0';
 }
 
 void init_post_req(struct open_post_req *post, const char *name) {
@@ -23,15 +18,14 @@ void init_post_req(struct open_post_req *post, const char *name) {
 	post->name_len = strlen(name);
 	strcpy(post->name, name);
 	post->content_len = 0;
-	post->content = malloc(post->content_len + 1);
+	post->content = NULL;
 	post->answ = malloc(sizeof(*(post->answ)));
 	init_string(post->answ);
 
-	if(post->name == NULL || post->content == NULL || post->answ == NULL){
+	if(post->name == NULL || post->answ == NULL){
 		fprintf(stderr, "malloc() failed\n");
 		exit(EXIT_FAILURE);
 	}
-	post->content[0] = '\0';
 }
 
 int postreq_exists(const char *name) {
