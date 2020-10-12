@@ -80,6 +80,8 @@ int str_startswith(const char *str, char *tocheck) {
 void delete_postreq(struct open_post_req *req) {
 	printf("[delete_postreq] called\n\tdeleting: %s\n", req->name);
 
+	if(req->next_element != NULL) printf("next: %s\n", req->next_element->name);	
+	if(req->prev_element != NULL) printf("prev: %s\n", req->prev_element->name);
 	if(open_post_requests_last == open_post_requests_first && open_post_requests_first == req) {
 		printf("case1\n");
 		open_post_requests_last = NULL;
@@ -87,9 +89,11 @@ void delete_postreq(struct open_post_req *req) {
 	} else if(open_post_requests_first == req) {
 		printf("case2\n");
 		req->next_element->prev_element = NULL;
+		open_post_requests_first = req->next_element;
 	} else if(open_post_requests_last == req) {
 		printf("case3\n");
 		req->prev_element->next_element = NULL;
+		open_post_requests_last = req->prev_element;
 	} else {
 		printf("case4\n");
 		req->prev_element->next_element = req->next_element;
