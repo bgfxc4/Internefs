@@ -154,7 +154,7 @@ int do_open(const char *path, struct fuse_file_info *fi) {
 	return 0;
 }
 
-int do_create (const char *path, mode_t mode, struct fuse_file_info *fi){
+int do_create(const char *path, mode_t mode, struct fuse_file_info *fi){
 	printf("[create] called\n\tcreating  %s\n", path);
 	if(str_startswith(path, "/post/") == 0) {
 		const char *file_name = path;
@@ -167,7 +167,7 @@ int do_create (const char *path, mode_t mode, struct fuse_file_info *fi){
 	return 0;
 }
 
-int do_truncate (const char *path, off_t offset) {
+int do_truncate(const char *path, off_t offset) {
 	printf("[truncate] called\n\ton %s with offset %li\n", path, offset);
 	if(str_startswith(path, "/post/") == 0) {
 		const char *file_name = path;
@@ -177,7 +177,7 @@ int do_truncate (const char *path, off_t offset) {
 	return 0;
 }
 
-int	do_unlink (const char *path) {
+int	do_unlink(const char *path) {
 	printf("[unlink] called\n\tdelete %s\n", path);
 	if(str_startswith(path, "/post/") == 0) {
 		path += 6;
@@ -192,7 +192,7 @@ int	do_unlink (const char *path) {
 	return 0;
 }
 
-int do_release (const char *path, struct fuse_file_info *fi) {
+int do_release(const char *path, struct fuse_file_info *fi) {
 	printf("[release] called\n\treleasing %s\n", path);
 	
 	if (str_startswith(path, "/get/") == 0) {
