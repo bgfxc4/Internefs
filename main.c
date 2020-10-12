@@ -14,8 +14,8 @@
 #include "fuse_ops.h"
 #include "http.h"
 
-struct open_post_req **open_post_requests;
-int open_post_requests_length = 0;
+struct open_post_req *open_post_requests_first = NULL;
+struct open_post_req *open_post_requests_last = NULL;
 
 void testing() {
 	struct open_post_req *testreq = new_postreq("https://postman-echo.com/post");

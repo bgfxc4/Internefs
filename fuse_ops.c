@@ -28,7 +28,7 @@ int do_getattr(const char *path, struct stat *st) {
 	} else if (str_startswith(path, "/post/") == 0) {
 		const char *filename = path;
 		filename += 6;
-		if(postreq_exists(filename) == -1) return -ENOENT;
+		if(postreq_exists(filename) == NULL) return -ENOENT;
 		st->st_mode = S_IFREG | 0664;
 		st->st_nlink = 1;     // file
 	} else {
@@ -48,11 +48,11 @@ int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t off
 		filler(buffer, "get", NULL, 0);
 		filler(buffer, "post", NULL, 0);
 	}else if (strcmp(path, "/post") == 0) {
-		for (int i = 0; i < open_post_requests_length; i ++) {
-			printf("%p test\n", open_post_requests[i]);
-			if(open_post_requests[i] != NULL) {
-				printf("%s\n", open_post_requests[i]->name);
-				filler(buffer, open_post_requests[i]->name, NULL, 0);	
+		for (struct open_post_req *i = open_post_requests_first; i != NULL; i = i->next_element) {
+			printf("%p test\n", i);
+			if(i != NULL) {
+				printf("%s\n", i->name);
+				filler(buffer, i->name, NULL, 0);	
 			}	
 		}
 	}
@@ -60,9 +60,22 @@ int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t off
 	return 0;
 }
 
+int	do_unlink(const char *path) {
+	printf("[unlink] called\n\tdelete %s\n", path);
+	if(str_startswith(path, "/post/") == 0) {
+		path += 6;
+		struct open_post_req *ret = postreq_exists(path);
+		if(ret == NULL) {
+			return -ENOENT;
+		} else {
+			delete_postreq(ret);
+		}
+	}
+	return 0;
+}
+
 int do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
 	printf("--> Trying to read %s, %lu, %lu\n", path, offset, size);
-
 struct string *answ;
 	if (str_startswith(path, "/get/") == 0) {
 		path += 5;
@@ -70,17 +83,18 @@ struct string *answ;
 		printf("%s\n", answ->ptr);
 	} else if (str_startswith(path, "/post/") == 0) {
 		path += 6;
-		int p_ret = postreq_exists(path);
-		if(p_ret != -1) {
+		struct open_post_req *p_ret = postreq_exists(path);
+		if(p_ret != NULL) {
 			answ = (struct string *)fi->fh;
 			if(offset == 0) {
-				http_post(open_post_requests[p_ret]);
-				answ->len = open_post_requests[p_ret]->answ->len;
+				http_post(p_ret);
+				answ->len = p_ret->answ->len;
 				answ->ptr = realloc(answ->ptr, answ->len + 1);
-				strcpy(answ->ptr, open_post_requests[p_ret]->answ->ptr);
+				strcpy(answ->ptr, p_ret->answ->ptr);
 			}
 			printf("reading:%s\n", answ->ptr);
 			answ->error = 0;
+
 		} else {
 			return -ENOENT;
 		}
@@ -125,11 +139,11 @@ int do_write( const char *path, const char *buffer, size_t size, off_t offset, s
 		char *reqname = malloc(strlen(path) + 1);
 		strcpy(reqname, path);
 		reqname += 6;
-		int ret = postreq_exists(reqname);
+		struct open_post_req *ret = postreq_exists(reqname);
 		reqname -= 6;
 		free(reqname);
-		if(ret != -1) {
-			write_to_postreq(open_post_requests[ret], buffer, size);
+		if(ret != NULL) {
+			write_to_postreq(ret, buffer, size);
 		} else {
 			return -1;
 		} 
@@ -173,21 +187,6 @@ int do_truncate(const char *path, off_t offset) {
 		const char *file_name = path;
 		file_name += 6;
 		new_postreq(file_name);
-	}
-	return 0;
-}
-
-int	do_unlink(const char *path) {
-	printf("[unlink] called\n\tdelete %s\n", path);
-	if(str_startswith(path, "/post/") == 0) {
-		path += 6;
-		int ret = postreq_exists(path);
-		if(ret == -1) {
-			return -ENOENT;
-		} else {
-			delete_postreq(open_post_requests[ret]);
-
-		}
 	}
 	return 0;
 }

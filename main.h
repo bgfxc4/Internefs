@@ -15,8 +15,8 @@
 #include <unistd.h>
 #include <errno.h>
 
-extern struct open_post_req **open_post_requests;
-extern int open_post_requests_length;
+extern struct open_post_req *open_post_requests_first;
+extern struct open_post_req *open_post_requests_last;
 
 struct string {
   char *ptr;
@@ -31,6 +31,8 @@ struct open_post_req {
 	char *content;
 	int content_len;
 	struct string *answ;
+	struct open_post_req *prev_element;
+	struct open_post_req *next_element;
 };
 
 enum HTTP_KEK_ERRORS {
