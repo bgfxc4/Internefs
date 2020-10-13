@@ -8,5 +8,6 @@
 #include "main.h"
 
 int http_get(const char *url, int urllength, struct string *s);
+int http_head(const char *url, int urllength, struct string *s);
 int http_post(struct open_post_req *req);
 #endif

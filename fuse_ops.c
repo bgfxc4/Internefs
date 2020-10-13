@@ -1,3 +1,4 @@
+#include <string.h>
 #define FUSE_USE_VERSION 30
 
 
@@ -18,7 +19,7 @@ int do_getattr(const char *path, struct stat *st) {
 	st->st_gid = getgid();
 	st->st_atime = time(NULL);
 	st->st_mtime = time(NULL);
-	if (strcmp(path, "/") == 0 || strcmp(path, "/get") == 0 || strcmp(path, "/post") == 0) {
+	if (strcmp(path, "/") == 0 || strcmp(path, "/get") == 0 || strcmp(path, "/post") == 0 || strcmp(path, "/head") == 0) {
 
 		st->st_mode = S_IFDIR | 0755; // directory
 		st->st_nlink = 2;
@@ -28,7 +29,10 @@ int do_getattr(const char *path, struct stat *st) {
 	} else if (str_startswith(path, "/post/") == 0) {
 		const char *filename = path;
 		filename += 6;
-		if(postreq_exists(filename) == NULL) return -ENOENT;
+		if (postreq_exists(filename) == NULL) return -ENOENT;
+		st->st_mode = S_IFREG | 0664;
+		st->st_nlink = 1;     // file
+	} else if (str_startswith(path, "/head") == 0) {
 		st->st_mode = S_IFREG | 0664;
 		st->st_nlink = 1;     // file
 	} else {
@@ -47,10 +51,11 @@ int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t off
 	if (strcmp(path, "/") == 0) {
 		filler(buffer, "get", NULL, 0);
 		filler(buffer, "post", NULL, 0);
-	}else if (strcmp(path, "/post") == 0) {
+		filler(buffer, "head", NULL, 0);
+	} else if (strcmp(path, "/post") == 0) {
 		for (struct open_post_req *i = open_post_requests_first; i != NULL; i = i->next_element) {
 			printf("%p test\n", i);
-			if(i != NULL) {
+			if (i != NULL) {
 				printf("%s\n", i->name);
 				filler(buffer, i->name, NULL, 0);	
 			}	
@@ -81,12 +86,17 @@ struct string *answ;
 		path += 5;
 		answ = (struct string *)fi->fh;
 		printf("%s\n", answ->ptr);
+	} else if (str_startswith(path, "/head/") == 0) {
+		path += 6;
+		printf("kekkekkekkkk\n\n\n");
+		answ = (struct string *)fi->fh;
+		printf("%s\n", answ->ptr);
 	} else if (str_startswith(path, "/post/") == 0) {
 		path += 6;
 		struct open_post_req *p_ret = postreq_exists(path);
-		if(p_ret != NULL) {
+		if (p_ret != NULL) {
 			answ = (struct string *)fi->fh;
-			if(offset == 0) {
+			if (offset == 0) {
 				http_post(p_ret);
 				answ->len = p_ret->answ->len;
 				answ->ptr = realloc(answ->ptr, answ->len + 1);
@@ -122,7 +132,7 @@ struct string *answ;
 		memcpy(buffer, error, strlen(error));
 		ret = strlen(error);
 		printf("--------------------------%i\n", answ->already_requested);
-		if(answ->already_requested == 1) {
+		if (answ->already_requested == 1) {
 			answ->already_requested = 0;
 			return ret;
 		} else {
@@ -142,7 +152,7 @@ int do_write( const char *path, const char *buffer, size_t size, off_t offset, s
 		struct open_post_req *ret = postreq_exists(reqname);
 		reqname -= 6;
 		free(reqname);
-		if(ret != NULL) {
+		if (ret != NULL) {
 			write_to_postreq(ret, buffer, size);
 		} else {
 			return -1;
@@ -155,12 +165,17 @@ int do_open(const char *path, struct fuse_file_info *fi) {
 	fi->direct_io = 1;
 	printf("[open] called\n\topening  %s\n", path);
 
-	if(str_startswith(path, "/get/") == 0) {
+	if (str_startswith(path, "/get/") == 0) {
 		struct string *answ = malloc(sizeof(*answ));
 		path += 5;
 		http_get(path, strlen(path), answ);
 		fi->fh = (uint64_t)answ;
-	}else if (str_startswith(path, "/post/") == 0) {
+	} else if (str_startswith(path, "/head/") == 0) {
+		struct string *answ = malloc(sizeof(*answ));
+		path += 6;
+		http_head(path, strlen(path), answ);
+		fi->fh = (uint64_t)answ;
+	} else if (str_startswith(path, "/post/") == 0) {
 		struct string *answ = malloc(sizeof(*answ));
 		init_string(answ);
 		fi->fh = (uint64_t)answ;	
@@ -170,7 +185,7 @@ int do_open(const char *path, struct fuse_file_info *fi) {
 
 int do_create(const char *path, mode_t mode, struct fuse_file_info *fi){
 	printf("[create] called\n\tcreating  %s\n", path);
-	if(str_startswith(path, "/post/") == 0) {
+	if (str_startswith(path, "/post/") == 0) {
 		const char *file_name = path;
 		file_name += 6;
 		new_postreq(file_name);
@@ -183,7 +198,7 @@ int do_create(const char *path, mode_t mode, struct fuse_file_info *fi){
 
 int do_truncate(const char *path, off_t offset) {
 	printf("[truncate] called\n\ton %s with offset %li\n", path, offset);
-	if(str_startswith(path, "/post/") == 0) {
+	if (str_startswith(path, "/post/") == 0) {
 		const char *file_name = path;
 		file_name += 6;
 		new_postreq(file_name);
@@ -198,6 +213,10 @@ int do_release(const char *path, struct fuse_file_info *fi) {
 		struct string *tofree = (struct string *)fi->fh;
 		free(tofree->ptr);
 		free(tofree);
+	} else if (str_startswith(path, "/head/") == 0) {
+		struct string *tofree = (struct string *)fi->fh;
+		free(tofree->ptr);
+		free(tofree);	
 	} else if (str_startswith(path, "/post/") == 0) {
 		struct string *tofree = (struct string *)fi->fh;
 		free(tofree->ptr);
