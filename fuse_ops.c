@@ -85,12 +85,9 @@ struct string *answ;
 	if (str_startswith(path, "/get/") == 0) {
 		path += 5;
 		answ = (struct string *)fi->fh;
-		printf("%s\n", answ->ptr);
 	} else if (str_startswith(path, "/head/") == 0) {
 		path += 6;
-		printf("kekkekkekkkk\n\n\n");
 		answ = (struct string *)fi->fh;
-		printf("%s\n", answ->ptr);
 	} else if (str_startswith(path, "/post/") == 0) {
 		path += 6;
 		struct open_post_req *p_ret = postreq_exists(path);
@@ -102,7 +99,6 @@ struct string *answ;
 				answ->ptr = realloc(answ->ptr, answ->len + 1);
 				strcpy(answ->ptr, p_ret->answ->ptr);
 			}
-			printf("reading:%s\n", answ->ptr);
 			answ->error = 0;
 
 		} else {
@@ -118,20 +114,30 @@ struct string *answ;
 		ret = min(answ->len - offset, size);
 	} else {
 		char *error;
-		if (answ->error == HTTP_ERROR_UNKNOWN)
-			error = "Internefs goes BLUB BLUB: something went wrong!\n";
-		else if (answ->error == HTTP_ERROR_PROTOCOL_ERROR)
-			error = "Internefs goes BLUB BLUB: KEK use another Protocol!\n";
-		else if (answ->error == HTTP_ERROR_INVALID_URL)
-			error = "Internefs goes BLUB BLUB: KEK format your URL right!\n";
-		else if (answ->error == HTTP_ERROR_CANT_CONNECT_TO_SERVER)
-			error = "Internefs goes BLUB BLUB: couldnt connect to the server!\n";
-		else if (answ->error == HTTP_ERROR_NON_EXISTING_DOMAIN)
-			error = "Internefs goes BLUB BLUB: KEK use an existing domain!\n";
+		if (answ->error == HTTP_ERROR_UNKNOWN) {
+			printf("unknown\n");
+			return -1;
+		}
+		else if (answ->error == HTTP_ERROR_PROTOCOL_ERROR) {
+			printf("prot err\n");
+			return -EPROTONOSUPPORT;
+		}
+		else if (answ->error == HTTP_ERROR_INVALID_URL) {
+			printf("invalid url\n");
+			return -EFAULT;
+		}
+		else if (answ->error == HTTP_ERROR_CANT_CONNECT_TO_SERVER) {
+			printf("cant connect to server\n");
+			return -ENETUNREACH;
+		}
+		else if (answ->error == HTTP_ERROR_NON_EXISTING_DOMAIN) {
+			printf("non existing domain\n");
+			return -ENETUNREACH;
+		}
 
 		memcpy(buffer, error, strlen(error));
 		ret = strlen(error);
-		printf("--------------------------%i\n", answ->already_requested);
+			printf("unknown\n");
 		if (answ->already_requested == 1) {
 			answ->already_requested = 0;
 			return ret;
